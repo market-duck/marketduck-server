@@ -93,7 +93,7 @@ public class ChatController implements ChatControllerIfs {
      * 채팅방 나가기 (비활성화)
      */
     @Override
-    @PutMapping("/rooms/{chatRoomId}/leave")
+    @PatchMapping("/rooms/{chatRoomId}/leave")
     public ResponseEntity<ResponseDto<Void>> leaveChatRoom(
             @PathVariable Long chatRoomId,
             @UserSession User user) {
