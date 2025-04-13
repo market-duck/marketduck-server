@@ -9,6 +9,7 @@ public enum AwsProperty {
     STORAGE("storage/"),
     USER_IMAGE("user/image/"),
     FEED_IMAGE("feed/image/"),
+    CHAT_IMAGE("chat/image/"),
 
     ZIP_DIR_NAME("zip/");
 

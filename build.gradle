@@ -70,6 +70,9 @@ dependencies {
 
 	// https://mvnrepository.com/artifact/com.amazonaws/aws-java-sdk
 	implementation 'com.amazonaws:aws-java-sdk:1.12.714'
+	
+	// WebSocket
+	implementation 'org.springframework.boot:spring-boot-starter-websocket'
 }
 
 tasks.named('test') {

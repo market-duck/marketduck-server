@@ -15,7 +15,7 @@ public enum ErrorCode {
     ACCESS_DENIED_REQUEST_API(403, "ACCESS_DENIED_REQUEST_API", 14007),
     ARGUMENT_MISMATCH_BAD_REQUEST(400, "ARGUMENT_MISMATCH_BAD_REQUEST", 14008),
     BLOCK_OR_INACTIVE_USER(403, "차단 또는 탈퇴 회원 입니다.", 14009),
-    USER_INACTIVE(403, "User Inactive" , 14010),
+    USER_INACTIVE(403, "User Inactive", 14010),
 
     NOT_FOUND_USER(404, "회원을 찾을수 없습니다.", 14011),
     WRONG_PASSWORD(403, "비밀번호가 틀렸습니다.", 14013),
@@ -39,8 +39,12 @@ public enum ErrorCode {
     EXPIRED_OR_NOT_FOUND_VERIFY_NUM(403, "EXPIRED_OR_NOT_FOUND_VERIFY_NUM", 14033),
     TOKEN_NOT_NULL(403, "TOKEN_NOT_NULL", 14034),
 
+    // 채팅 관련 에러 코드
+    NOT_FOUND_CHAT_ROOM(404, "채팅방을 찾을 수 없습니다.", 14035),
+    NOT_FOUND_CHAT_MESSAGE(404, "채팅 메시지를 찾을 수 없습니다.", 14036),
+    INVALID_PARAMETER(400, "잘못된 매개변수입니다.", 14037),
 
-    INTERNAL_SERVER_ERROR(500, "Internal Server Error" , 15001),
+    INTERNAL_SERVER_ERROR(500, "Internal Server Error", 15001),
     DATA_ACCESS_ERROR(500, "Data Access Error", 15002),
     HTTP_REQUEST_IO_ERROR(501, "HTTP_REQUEST_IO_ERROR", 15003),
     NOT_IMPLEMENTED(501, "NOT IMPLEMENTED", 15004),
@@ -49,7 +53,6 @@ public enum ErrorCode {
 
     @Getter
     private final int status;
-
 
     @Getter
     private final int code;

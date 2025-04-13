@@ -43,3 +43,6 @@ src/main/resources/.env
 /src/main/generated
 
 .DS_Store
+
+.env
+.cursor
