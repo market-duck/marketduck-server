@@ -16,7 +16,7 @@ import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.simp.SimpMessageSendingOperations;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
-
+import com.devgang.marketduck.dto.PageResponseDto;
 import java.util.List;
 
 @Slf4j
@@ -79,14 +79,14 @@ public class ChatController implements ChatControllerIfs {
      */
     @Override
     @GetMapping("/rooms/{chatRoomId}")
-    public ResponseEntity<ResponseDto<ChatRoomDto>> getChatRoom(
+    public ResponseEntity<PageResponseDto<ChatRoomDto>> getChatRoom(
             @PathVariable Long chatRoomId,
             @UserSession User user) {
 
         Long userId = user.getUserId();
-        ChatRoomDto chatRoom = chatService.getChatRoomWithMessages(chatRoomId, userId);
+        PageResponseDto<ChatRoomDto> chatRoom = chatService.getChatRoomWithPageMessages(chatRoomId, userId);
 
-        return ResponseEntity.ok(ResponseDto.of(chatRoom, Result.ok()));
+        return ResponseEntity.ok(chatRoom);
     }
 
     /**

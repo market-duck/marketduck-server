@@ -28,6 +28,9 @@ import java.util.stream.Collectors;
 import com.devgang.marketduck.file.service.FileService;
 import com.devgang.marketduck.domain.chat.dto.ChatImageResponseDto;
 import java.util.ArrayList;
+import org.springframework.data.domain.Page;
+import com.devgang.marketduck.dto.PageResponseDto;
+import com.devgang.marketduck.dto.Result;
 
 @Service
 @RequiredArgsConstructor
@@ -97,7 +100,7 @@ public class ChatService {
         return chatRooms.stream()
                 .map(chatRoom -> {
                     // 각 채팅방의 최근 메시지 1개와 읽지 않은 메시지 수를 함께 조회
-                    List<ChatMessage> recentMessages = chatMessageRepository.findRecentMessagesByChatRoom(chatRoom, 1);
+                    Page<ChatMessage> recentMessages = chatMessageRepository.findRecentMessagesByChatRoom(chatRoom, 1);
                     List<ChatMessageDto> messageDtos = recentMessages.stream()
                             .map(ChatMessageDto::of)
                             .collect(Collectors.toList());
@@ -125,7 +128,7 @@ public class ChatService {
         }
 
         // 최근 메시지 30개 조회
-        List<ChatMessage> recentMessages = chatMessageRepository.findRecentMessagesByChatRoom(chatRoom, 30);
+        Page<ChatMessage> recentMessages = chatMessageRepository.findRecentMessagesByChatRoom(chatRoom, 30);
         List<ChatMessageDto> messageDtos = recentMessages.stream()
                 .map(ChatMessageDto::of)
                 .collect(Collectors.toList());
@@ -151,6 +154,45 @@ public class ChatService {
 
         return ChatRoomDto.of(chatRoom, messageDtos, unreadCount);
     }
+
+        // 채팅방 상세 조회
+        public PageResponseDto<ChatRoomDto> getChatRoomWithPageMessages(Long chatRoomId, Long userId) {
+            ChatRoom chatRoom = chatRoomRepository.findById(chatRoomId)
+                    .orElseThrow(() -> new ServiceLogicException(ErrorCode.NOT_FOUND_CHAT_ROOM));
+    
+            // 사용자가 채팅방 참여자인지 확인
+            if (!chatRoom.getSender().getUserId().equals(userId) &&
+                    !chatRoom.getReceiver().getUserId().equals(userId)) {
+                throw new ServiceLogicException(ErrorCode.ACCESS_DENIED, "접근 권한이 없는 채팅방입니다.");
+            }
+    
+            // 최근 메시지 30개 조회
+            Page<ChatMessage> recentMessages = chatMessageRepository.findRecentMessagesByChatRoom(chatRoom, 30);
+            List<ChatMessageDto> messageDtos = recentMessages.stream()
+                    .map(ChatMessageDto::of)
+                    .collect(Collectors.toList());
+    
+            // 읽지 않은 메시지 수 계산
+            long unreadCount = recentMessages.stream()
+                    .filter(message -> !message.isRead() &&
+                            (message.getSender() != null &&
+                                    !message.getSender().getUserId().equals(userId)))
+                    .count();
+    
+            // 읽지 않은 메시지 읽음 처리
+            for (ChatMessage message : recentMessages) {
+                if (!message.isRead() &&
+                        (message.getSender() == null || !message.getSender().getUserId().equals(userId))) {
+                    message.setRead(true);
+                    chatMessageRepository.save(message);
+                }
+            }
+    
+            // Redis 토픽 생성(없는 경우에만)
+            createRedisTopic(chatRoom.getSessionId());
+    
+            return PageResponseDto.of(recentMessages, ChatRoomDto.of(chatRoom, messageDtos, unreadCount), Result.ok());
+        }
 
     // 채팅 메시지 전송
     public ChatMessageDto sendMessage(Long chatRoomId, Long senderId, String content, MessageType messageType) {

@@ -6,7 +6,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
-
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Page;
 import java.util.List;
 
 public interface ChatMessageJpaRepository extends JpaRepository<ChatMessage, Long> {
@@ -16,6 +17,8 @@ public interface ChatMessageJpaRepository extends JpaRepository<ChatMessage, Lon
             @Param("limit") int limit);
 
     List<ChatMessage> findAllByChatRoomOrderByCreatedAtDesc(ChatRoom chatRoom);
+
+    Page<ChatMessage> findByChatRoomOrderByCreatedAtDesc(ChatRoom chatRoom, Pageable pageable);
 
     @Modifying
     @Query("UPDATE ChatMessage cm SET cm.isRead = true WHERE cm.messageId = :messageId")

@@ -6,6 +6,7 @@ import com.devgang.marketduck.domain.chat.dto.ChatMessageDto;
 import com.devgang.marketduck.domain.chat.dto.ChatRoomDto;
 import com.devgang.marketduck.domain.user.entity.User;
 import com.devgang.marketduck.dto.ResponseDto;
+import com.devgang.marketduck.dto.PageResponseDto;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -44,6 +45,9 @@ public interface ChatControllerIfs {
     }
 
     class ChatMessageResponse extends ResponseDto<ChatMessageDto> {
+    }
+
+    class ChatRoomPageResponse extends PageResponseDto<ChatRoomDto> {
     }
 
     class ChatImagesResponse extends ResponseDto<List<ChatImageResponseDto>> {
@@ -91,10 +95,10 @@ public interface ChatControllerIfs {
             """)
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "정상 응답", content = {
-                    @Content(mediaType = "application/json", schema = @Schema(implementation = ChatRoomResponse.class))
+                    @Content(mediaType = "application/json", schema = @Schema(implementation = ChatRoomPageResponse.class))
             })
     })
-    ResponseEntity<ResponseDto<ChatRoomDto>> getChatRoom(
+    ResponseEntity<PageResponseDto<ChatRoomDto>> getChatRoom(
             @PathVariable @Parameter(description = "채팅방 ID", required = true) Long chatRoomId,
             @UserSession @Parameter(hidden = true) User user);
 
