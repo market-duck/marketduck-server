@@ -23,7 +23,7 @@ public class ChatMessage extends Auditable {
     private String content;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "sender_id", nullable = false)
+    @JoinColumn(name = "sender_id", nullable = true)
     private User sender;
 
     @ManyToOne(fetch = FetchType.LAZY)
