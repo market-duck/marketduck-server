@@ -17,7 +17,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
-
+import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
 
 @Tag(name = "Feed Open API", description = "Feed 관련 Open API")
@@ -36,7 +36,8 @@ public interface FeedOpenApiControllerIfs {
                     })
     })
     ResponseEntity<PageResponseDto<List<FeedSimpleResponseDto>>> getFeedList(
-            @ModelAttribute FeedSearchDto requestDto
+            @ModelAttribute FeedSearchDto requestDto,
+            @Parameter(hidden = true) HttpServletRequest request
             );
 
     /*

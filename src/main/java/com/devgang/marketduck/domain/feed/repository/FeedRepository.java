@@ -11,7 +11,7 @@ import java.util.List;
 
 public interface FeedRepository {
 
-    Page<FeedSimpleResponseDto> findAll(FeedSearchDto dto);
+    Page<FeedSimpleResponseDto> findAll(FeedSearchDto dto, Long userId);
     Page<FeedSimpleResponseDto> findAllForAdmin(FeedSearchDto dto);
 
     Page<FeedSimpleResponseDto> findAllByUserId(Long userId, int page);

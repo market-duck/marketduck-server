@@ -45,8 +45,12 @@ public class FeedService {
     private final FileService fileService;
 
 
-    public Page<FeedSimpleResponseDto> findAllFeed(FeedSearchDto dto) {
-        return feedRepository.findAll(dto);
+    public Page<FeedSimpleResponseDto> findAllFeed(FeedSearchDto dto, String userId) {
+        Long userIdLong = null;
+        if (userId != null && !userId.isBlank()) {
+            userIdLong = Long.parseLong(userId);
+        }
+        return feedRepository.findAll(dto, userIdLong);
     }
 
     public Page<FeedSimpleResponseDto> findAllFeedForAdmin(FeedSearchDto dto, User user) {

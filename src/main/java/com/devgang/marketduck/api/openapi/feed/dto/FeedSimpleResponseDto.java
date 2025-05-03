@@ -20,7 +20,7 @@ import java.util.List;
 @NoArgsConstructor
 public class FeedSimpleResponseDto {
 
-    private Long feedId;  // ID 필드를 feedId로 변경
+    private Long feedId; // ID 필드를 feedId로 변경
 
     private List<CategoryResponseDto> genreCategory;
 
@@ -46,9 +46,18 @@ public class FeedSimpleResponseDto {
 
     private LocalDateTime updatedAt;
 
+    private boolean isLiked;
+
+    // isLiked setter 명시적 추가
+    public void setLiked(boolean liked) {
+        this.isLiked = liked;
+    }
 
     @QueryProjection
-    public FeedSimpleResponseDto(Long feedId, List<CategoryResponseDto> genreCategory, List<CategoryResponseDto> goodsCategory, String title, BigDecimal price, String content, int viewCount, int likeCount, FeedStatus status,FeedType feedType, String mainImageUrl, LocalDateTime createdAt, LocalDateTime updatedAt) {
+    public FeedSimpleResponseDto(Long feedId, List<CategoryResponseDto> genreCategory,
+            List<CategoryResponseDto> goodsCategory, String title, BigDecimal price, String content, int viewCount,
+            int likeCount, FeedStatus status, FeedType feedType, String mainImageUrl, LocalDateTime createdAt,
+            LocalDateTime updatedAt, boolean isLiked) {
         this.feedId = feedId;
         this.genreCategory = genreCategory;
         this.goodsCategory = goodsCategory;
@@ -62,17 +71,19 @@ public class FeedSimpleResponseDto {
         this.mainImageUrl = mainImageUrl;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
+        this.isLiked = isLiked;
     }
-
 
     public static FeedSimpleResponseDto of(Feed feed) {
         return FeedSimpleResponseDto.builder()
                 .feedId(feed.getFeedId())
                 .genreCategory(feed.getFeedGenreCategories().stream()
-                        .map(category -> new CategoryResponseDto(category.getGenreCategory().getGenreCategoryId(), category.getGenreCategory().getGenreCategoryName(), CategoryType.GENRE))
+                        .map(category -> new CategoryResponseDto(category.getGenreCategory().getGenreCategoryId(),
+                                category.getGenreCategory().getGenreCategoryName(), CategoryType.GENRE))
                         .toList())
                 .goodsCategory(feed.getFeedGoodsCategories().stream()
-                        .map(category -> new CategoryResponseDto(category.getGoodsCategory().getGoodsCategoryId(), category.getGoodsCategory().getGoodsCategoryName(), CategoryType.GOODS))
+                        .map(category -> new CategoryResponseDto(category.getGoodsCategory().getGoodsCategoryId(),
+                                category.getGoodsCategory().getGoodsCategoryName(), CategoryType.GOODS))
                         .toList())
                 .title(feed.getTitle())
                 .price(feed.getPrice())
@@ -81,7 +92,8 @@ public class FeedSimpleResponseDto {
                 .likeCount(feed.getLikeCount())
                 .status(feed.getFeedStatus())
                 .feedType(feed.getFeedType())
-                .mainImageUrl(feed.getFeedImages().stream().filter(FeedImage::isMain).map(FeedImage::getFileUrl).findFirst().orElse(""))
+                .mainImageUrl(feed.getFeedImages().stream().filter(FeedImage::isMain).map(FeedImage::getFileUrl)
+                        .findFirst().orElse(""))
                 .createdAt(feed.getCreatedAt())
                 .updatedAt(feed.getUpdatedAt())
                 .build();

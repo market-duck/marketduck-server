@@ -16,6 +16,8 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import jakarta.servlet.http.HttpServletRequest;
+
 import java.util.List;
 
 @RestController
@@ -28,8 +30,10 @@ public class FeedOpenApiController implements FeedOpenApiControllerIfs {
 
     @Override
     @GetMapping
-    public ResponseEntity<PageResponseDto<List<FeedSimpleResponseDto>>> getFeedList(FeedSearchDto requestDto) {
-        Page<FeedSimpleResponseDto> response = feedService.findAllFeed(requestDto);
+    public ResponseEntity<PageResponseDto<List<FeedSimpleResponseDto>>> getFeedList(FeedSearchDto requestDto, HttpServletRequest request) {
+        String userId = request.getHeader("userId");
+
+        Page<FeedSimpleResponseDto> response = feedService.findAllFeed(requestDto, userId);
         return ResponseEntity.ok(PageResponseDto.of(response, response.getContent(), Result.ok()));
     }
 
