@@ -1,5 +1,6 @@
 package com.devgang.marketduck.config;
 
+import com.devgang.marketduck.config.websocket.AuthHandshakeInterceptor;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.messaging.simp.config.MessageBrokerRegistry;
@@ -11,6 +12,8 @@ import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerCo
 @RequiredArgsConstructor
 @EnableWebSocketMessageBroker
 public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
+
+    private final AuthHandshakeInterceptor authHandshakeInterceptor;
 
     @Override
     public void configureMessageBroker(MessageBrokerRegistry registry) {
@@ -26,6 +29,7 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
         // 웹소켓 연결 엔드포인트 설정
         registry.addEndpoint("/ws-chat")
                 .setAllowedOriginPatterns("*")
+                .addInterceptors(authHandshakeInterceptor)
                 .withSockJS(); // SockJS 지원
     }
 }
