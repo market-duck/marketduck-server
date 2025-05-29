@@ -26,52 +26,48 @@ import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 @RequiredArgsConstructor
 public class SecConfig {
 
+        private final JwtTokenizer jwtTokenizer;
 
-    private final JwtTokenizer jwtTokenizer;
+        private final CustomAuthorityUtils authorityUtils;
 
-    private final CustomAuthorityUtils authorityUtils;
+        @Bean
+        PasswordEncoder passwordEncoder() {
+                return PasswordEncoderFactories.createDelegatingPasswordEncoder();
+        }
 
+        @Bean
+        AuthenticationManager authenticationManager(
+                        AuthenticationConfiguration authenticationConfiguration) throws Exception {
+                return authenticationConfiguration.getAuthenticationManager();
+        }
 
-    @Bean
-    PasswordEncoder passwordEncoder() {
-        return PasswordEncoderFactories.createDelegatingPasswordEncoder();
-    }
+        @Bean
+        SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+                JwtAuthorizationFilter jwtVerificationFilter = new JwtAuthorizationFilter(jwtTokenizer, authorityUtils);
 
-    @Bean
-    AuthenticationManager authenticationManager(
-            AuthenticationConfiguration authenticationConfiguration
-    ) throws Exception {
-        return authenticationConfiguration.getAuthenticationManager();
-    }
+                http
+                                .httpBasic(AbstractHttpConfigurer::disable)
+                                .cors(AbstractHttpConfigurer::disable)
+                                .authorizeHttpRequests((authorizeHttpRequests) -> authorizeHttpRequests
+                                                .requestMatchers(new AntPathRequestMatcher("/open-api/**")).permitAll()
+                                                .requestMatchers(new AntPathRequestMatcher("/chat-test/**")).permitAll()
+                                                .requestMatchers(new AntPathRequestMatcher("/api/**"))
+                                                .hasAnyRole("USER")
+                                                .requestMatchers(new AntPathRequestMatcher("/**")).permitAll())
+                                .csrf(AbstractHttpConfigurer::disable)
+                                .headers((headers) -> headers
+                                                .addHeaderWriter(new XFrameOptionsHeaderWriter(
+                                                                XFrameOptionsHeaderWriter.XFrameOptionsMode.SAMEORIGIN)))
+                                .formLogin(AbstractHttpConfigurer::disable)
+                                .logout(AbstractHttpConfigurer::disable)
+                                .addFilterBefore(jwtVerificationFilter, UsernamePasswordAuthenticationFilter.class)
+                                .sessionManagement(session -> session
+                                                .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                                .exceptionHandling(ex -> ex
+                                                .authenticationEntryPoint(new UserAuthenticationEntryPoint())
+                                                .accessDeniedHandler(new UserAccessDeniedHandler()));
 
-    @Bean
-    SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-        JwtAuthorizationFilter jwtVerificationFilter = new JwtAuthorizationFilter(jwtTokenizer, authorityUtils);
-
-        http
-                .httpBasic(AbstractHttpConfigurer::disable)
-                .cors(AbstractHttpConfigurer::disable)
-                .authorizeHttpRequests((authorizeHttpRequests) -> authorizeHttpRequests
-                        .requestMatchers(new AntPathRequestMatcher("/open-api/**")).permitAll()
-                        .requestMatchers(new AntPathRequestMatcher("/api/**")).hasAnyRole( "USER")
-                        .requestMatchers(new AntPathRequestMatcher("/**")).permitAll())
-                .csrf(AbstractHttpConfigurer::disable)
-                .headers((headers) -> headers
-                        .addHeaderWriter(new XFrameOptionsHeaderWriter(
-                                XFrameOptionsHeaderWriter.XFrameOptionsMode.SAMEORIGIN)))
-                .formLogin(AbstractHttpConfigurer::disable)
-                .logout(AbstractHttpConfigurer::disable)
-                .addFilterBefore(jwtVerificationFilter, UsernamePasswordAuthenticationFilter.class)
-                .sessionManagement(session ->
-                        session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
-                )
-                .exceptionHandling(ex -> ex
-                        .authenticationEntryPoint(new UserAuthenticationEntryPoint())
-                        .accessDeniedHandler(new UserAccessDeniedHandler()))
-        ;
-
-
-        return http.build();
-    }
+                return http.build();
+        }
 
 }

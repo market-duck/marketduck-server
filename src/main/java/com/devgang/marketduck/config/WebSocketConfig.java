@@ -30,6 +30,8 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
         registry.addEndpoint("/ws-chat")
                 .setAllowedOriginPatterns("*")
                 .addInterceptors(authHandshakeInterceptor)
-                .withSockJS(); // SockJS 지원
+                .withSockJS()
+                .setHeartbeatTime(15000) // 15초 간격으로 SockJS 하트비트
+                .setDisconnectDelay(30000); // 30초 후 연결 종료로 간주
     }
 }

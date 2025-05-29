@@ -19,6 +19,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.listener.ChannelTopic;
+import org.springframework.data.redis.listener.RedisMessageListenerContainer;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -31,6 +32,8 @@ import java.util.ArrayList;
 import org.springframework.data.domain.Page;
 import com.devgang.marketduck.dto.PageResponseDto;
 import com.devgang.marketduck.dto.Result;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Service
 @RequiredArgsConstructor
@@ -44,6 +47,9 @@ public class ChatService {
     private final FeedRepository feedRepository;
     private final RedisTemplate<String, Object> redisTemplate;
     private final FileService fileService;
+
+    // 채팅방의 토픽 저장용 맵
+    private Map<String, ChannelTopic> topics = new ConcurrentHashMap<>();
 
     // 채팅방 생성
     public ChatRoomDto createChatRoom(Long feedId, Long senderId, Long receiverId) {
@@ -258,12 +264,19 @@ public class ChatService {
 
     // Redis 토픽 생성
     private void createRedisTopic(String sessionId) {
-        // 이미 토픽이 존재하는지 확인하는 로직은 생략
-        // Redis에 토픽 키가 있는지 확인하는 코드를 추가할 수 있음
+        String topicName = "chat." + sessionId;
 
-        // 채널 토픽 생성
-        new ChannelTopic("chat." + sessionId);
-        log.info("Redis topic created: chat.{}", sessionId);
+        // 이미 토픽이 존재하는지 확인
+        if (!topics.containsKey(topicName)) {
+            ChannelTopic topic = new ChannelTopic(topicName);
+            topics.put(topicName, topic);
+            log.info("Redis topic created: {}", topicName);
+
+            // Redis에 해당 세션 ID가 있음을 표시하는 값 설정
+            redisTemplate.opsForValue().set("chat_session:" + sessionId, "active");
+        } else {
+            log.debug("Redis topic already exists: {}", topicName);
+        }
     }
 
     public List<ChatImageResponseDto> createChatImage(MultipartFile[] files) {

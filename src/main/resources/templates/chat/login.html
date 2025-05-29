@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>채팅 테스트 - 로그인</title>
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <style>
+      body {
+        font-family: "Arial", sans-serif;
+        max-width: 600px;
+        margin: 0 auto;
+        padding: 20px;
+        background-color: #f7f7f7;
+      }
+      .container {
+        background-color: white;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      }
+      h1 {
+        color: #3498db;
+        text-align: center;
+      }
+      .form-group {
+        margin-bottom: 15px;
+      }
+      label {
+        display: block;
+        margin-bottom: 5px;
+        font-weight: bold;
+      }
+      input[type="text"],
+      input[type="password"] {
+        width: 100%;
+        padding: 8px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        box-sizing: border-box;
+      }
+      button {
+        background-color: #3498db;
+        color: white;
+        border: none;
+        padding: 10px 15px;
+        border-radius: 4px;
+        cursor: pointer;
+        width: 100%;
+        font-size: 16px;
+      }
+      button:hover {
+        background-color: #2980b9;
+      }
+      .user-selection {
+        margin-top: 20px;
+        display: flex;
+        justify-content: space-between;
+      }
+      .user-selection button {
+        width: 48%;
+        margin-bottom: 10px;
+      }
+      .result {
+        margin-top: 20px;
+        padding: 10px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        background-color: #f9f9f9;
+        display: none;
+      }
+      .error {
+        color: red;
+        margin-top: 10px;
+        display: none;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>채팅 테스트 로그인</h1>
+
+      <div class="form-group">
+        <label for="username">이메일</label>
+        <input
+          type="text"
+          id="username"
+          placeholder="이메일 주소를 입력하세요"
+        />
+      </div>
+
+      <div class="form-group">
+        <label for="password">비밀번호</label>
+        <input
+          type="password"
+          id="password"
+          placeholder="비밀번호를 입력하세요"
+        />
+      </div>
+
+      <button id="loginButton">로그인</button>
+
+      <div class="user-selection">
+        <button id="user1Button">테스트유저1 사용</button>
+        <button id="user2Button">테스트유저2 사용</button>
+      </div>
+
+      <div class="error" id="errorMessage"></div>
+
+      <div class="result" id="resultContainer">
+        <h3>로그인 성공!</h3>
+        <p>토큰: <span id="token"></span></p>
+        <p>
+          사용자 정보: <br />아이디: <span id="userId"></span> <br />닉네임:
+          <span id="nickname"></span> <br />이메일: <span id="email"></span>
+        </p>
+        <button id="gotoChatRoomButton">채팅방 목록으로 이동</button>
+      </div>
+    </div>
+
+    <script>
+      $(document).ready(function () {
+        // 테스트 유저1 정보 채우기
+        $("#user1Button").click(function () {
+          $("#username").val("user1@marketduck.com");
+          $("#password").val("1111!");
+        });
+
+        // 테스트 유저2 정보 채우기
+        $("#user2Button").click(function () {
+          $("#username").val("user2@marketduck.com");
+          $("#password").val("1111!");
+        });
+
+        // 로그인 요청
+        $("#loginButton").click(function () {
+          const username = $("#username").val();
+          const password = $("#password").val();
+
+          if (!username || !password) {
+            showError("이메일과 비밀번호를 모두 입력해주세요.");
+            return;
+          }
+
+          $.ajax({
+            url: "/open-api/user/login/basic",
+            type: "POST",
+            contentType: "application/json",
+            data: JSON.stringify({
+              username: username,
+              password: password
+            }),
+            success: function (response) {
+              console.log("응답 데이터:", response);
+
+              if (response && response.data) {
+                const userData = response.data;
+
+                // 로컬 스토리지에 필요한 정보 저장
+                localStorage.setItem("token", userData.accessToken);
+                localStorage.setItem("userId", userData.userId);
+                localStorage.setItem("nickname", userData.nickname);
+                localStorage.setItem("email", userData.email);
+
+                // 화면에 정보 표시
+                $("#token").text(userData.accessToken);
+                $("#userId").text(userData.userId);
+                $("#nickname").text(userData.nickname);
+                $("#email").text(userData.email);
+
+                $("#resultContainer").show();
+                $("#errorMessage").hide();
+              } else {
+                showError("응답 형식이 올바르지 않습니다.");
+              }
+            },
+            error: function (xhr, status, error) {
+              console.error("로그인 실패:", xhr.responseText);
+              try {
+                const errorResponse = JSON.parse(xhr.responseText);
+                showError("로그인 실패: " + (errorResponse.message || error));
+              } catch (e) {
+                showError("로그인 실패: " + error);
+              }
+            }
+          });
+        });
+
+        // 채팅방 목록으로 이동
+        $("#gotoChatRoomButton").click(function () {
+          window.location.href = "/chat-test/rooms";
+        });
+
+        // 에러 메시지 표시 함수
+        function showError(message) {
+          $("#errorMessage").text(message);
+          $("#errorMessage").show();
+          $("#resultContainer").hide();
+        }
+
+        // 로컬 스토리지에 토큰이 있으면 자동으로 표시
+        const savedToken = localStorage.getItem("token");
+        if (savedToken) {
+          $("#token").text(savedToken);
+          $("#userId").text(localStorage.getItem("userId"));
+          $("#nickname").text(localStorage.getItem("nickname"));
+          $("#email").text(localStorage.getItem("email"));
+          $("#resultContainer").show();
+        }
+      });
+    </script>
+  </body>
+</html>

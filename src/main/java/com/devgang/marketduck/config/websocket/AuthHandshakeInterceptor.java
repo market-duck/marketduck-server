@@ -75,8 +75,9 @@ public class AuthHandshakeInterceptor extends HttpSessionHandshakeInterceptor {
                     log.debug("WebSocket 연결 시도: URL 파라미터에서 토큰 추출 - {}", token);
                 }
             } else {
-                // Bearer 접두사 제거
-                token = token.substring(7);
+                if (token.contains("Bearer")) {
+                    token = token.substring(7);
+                }
                 log.debug("WebSocket 연결 시도: 헤더에서 토큰 추출 - {}", token);
             }
 

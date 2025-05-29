@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>채팅 테스트 - 채팅방 목록</title>
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <style>
+      body {
+        font-family: "Arial", sans-serif;
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 20px;
+        background-color: #f7f7f7;
+      }
+      .container {
+        background-color: white;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      }
+      h1,
+      h2 {
+        color: #3498db;
+      }
+      .header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+        padding-bottom: 10px;
+        border-bottom: 1px solid #eee;
+      }
+      .user-info {
+        background-color: #f0f8ff;
+        padding: 10px;
+        border-radius: 4px;
+        margin-bottom: 20px;
+      }
+      .room-list {
+        margin-top: 20px;
+      }
+      .room-item {
+        padding: 15px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        margin-bottom: 10px;
+        cursor: pointer;
+        transition: background-color 0.2s;
+      }
+      .room-item:hover {
+        background-color: #f5f5f5;
+      }
+      .room-title {
+        font-weight: bold;
+        margin-bottom: 5px;
+      }
+      .room-info {
+        font-size: 14px;
+        color: #666;
+      }
+      button {
+        background-color: #3498db;
+        color: white;
+        border: none;
+        padding: 8px 15px;
+        border-radius: 4px;
+        cursor: pointer;
+      }
+      button:hover {
+        background-color: #2980b9;
+      }
+      .create-room {
+        margin-top: 20px;
+        padding: 15px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+      }
+      .form-group {
+        margin-bottom: 15px;
+      }
+      label {
+        display: block;
+        margin-bottom: 5px;
+        font-weight: bold;
+      }
+      input[type="text"],
+      input[type="number"] {
+        width: 100%;
+        padding: 8px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        box-sizing: border-box;
+      }
+      .error {
+        color: red;
+        margin-top: 10px;
+        display: none;
+      }
+      .badge {
+        background-color: #e74c3c;
+        color: white;
+        border-radius: 50%;
+        padding: 2px 6px;
+        font-size: 12px;
+        margin-left: 5px;
+      }
+      .logout-btn {
+        background-color: #e74c3c;
+      }
+      .logout-btn:hover {
+        background-color: #c0392b;
+      }
+      .no-rooms {
+        text-align: center;
+        padding: 20px;
+        color: #888;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <h1>채팅방 목록</h1>
+        <div>
+          <button id="refreshButton">새로고침</button>
+          <button id="logoutButton" class="logout-btn">로그아웃</button>
+        </div>
+      </div>
+
+      <div class="user-info">
+        <p><strong>사용자:</strong> <span id="userNickname"></span></p>
+        <p><strong>ID:</strong> <span id="userId"></span></p>
+      </div>
+
+      <div class="room-list" id="roomList">
+        <div class="no-rooms">채팅방이 없습니다.</div>
+      </div>
+
+      <div class="create-room">
+        <h2>새 채팅방 생성</h2>
+        <div class="form-group">
+          <label for="feedId">피드 ID</label>
+          <input
+            type="number"
+            id="feedId"
+            value="1"
+            placeholder="피드 ID를 입력하세요"
+          />
+        </div>
+
+        <div class="form-group">
+          <label for="receiverId">수신자 ID</label>
+          <input
+            type="number"
+            id="receiverId"
+            placeholder="수신자 ID를 입력하세요"
+          />
+          <small>* 다른 테스트 계정의 ID를 입력하세요.</small>
+        </div>
+
+        <button id="createRoomButton">채팅방 생성</button>
+        <div class="error" id="errorMessage"></div>
+      </div>
+    </div>
+
+    <script>
+      $(document).ready(function () {
+        // 토큰 체크
+        const token = localStorage.getItem("token");
+        const userId = localStorage.getItem("userId");
+        if (!token || !userId) {
+          window.location.href = "/chat-test/login";
+          return;
+        }
+
+        // 사용자 정보 표시
+        $("#userNickname").text(localStorage.getItem("nickname"));
+        $("#userId").text(userId);
+
+        // 채팅방 목록 조회
+        loadChatRooms();
+
+        // 새로고침 버튼
+        $("#refreshButton").click(function () {
+          loadChatRooms();
+        });
+
+        // 로그아웃 버튼
+        $("#logoutButton").click(function () {
+          localStorage.removeItem("token");
+          localStorage.removeItem("userId");
+          localStorage.removeItem("nickname");
+          localStorage.removeItem("email");
+          window.location.href = "/chat-test/login";
+        });
+
+        // 채팅방 생성 버튼
+        $("#createRoomButton").click(function () {
+          const feedId = $("#feedId").val();
+          const receiverId = $("#receiverId").val();
+
+          if (!feedId || !receiverId) {
+            showError("피드 ID와 수신자 ID를 모두 입력해주세요.");
+            return;
+          }
+
+          // 자신과의 채팅방 생성 방지
+          if (receiverId === userId) {
+            showError("자신과의 채팅방은 생성할 수 없습니다.");
+            return;
+          }
+
+          $.ajax({
+            url: "/api/chat/rooms",
+            type: "POST",
+            headers: {
+              Authorization: "Bearer " + token
+            },
+            data: {
+              feedId: feedId,
+              receiverId: receiverId
+            },
+            success: function (response) {
+              console.log("채팅방 생성 응답:", response);
+              if (response && response.data) {
+                // 채팅방 목록 새로고침
+                loadChatRooms();
+
+                // 새로 생성된 채팅방으로 이동
+                goToChatRoom(response.data.chatRoomId);
+              } else {
+                showError("응답 형식이 올바르지 않습니다.");
+              }
+            },
+            error: function (xhr, status, error) {
+              console.error("채팅방 생성 실패:", xhr.responseText);
+              try {
+                const errorResponse = JSON.parse(xhr.responseText);
+                showError(
+                  "채팅방 생성 실패: " + (errorResponse.message || error)
+                );
+              } catch (e) {
+                showError("채팅방 생성 실패: " + error);
+              }
+            }
+          });
+        });
+
+        // 채팅방 목록 조회 함수
+        function loadChatRooms() {
+          $.ajax({
+            url: "/api/chat/rooms",
+            type: "GET",
+            headers: {
+              Authorization: "Bearer " + token
+            },
+            success: function (response) {
+              console.log("채팅방 목록 응답:", response);
+              if (response && response.data) {
+                renderChatRooms(response.data);
+              } else {
+                showError("응답 형식이 올바르지 않습니다.");
+              }
+            },
+            error: function (xhr, status, error) {
+              console.error("채팅방 목록 조회 실패:", xhr.responseText);
+              try {
+                const errorResponse = JSON.parse(xhr.responseText);
+                showError(
+                  "채팅방 목록 조회 실패: " + (errorResponse.message || error)
+                );
+              } catch (e) {
+                showError("채팅방 목록 조회 실패: " + error);
+              }
+            }
+          });
+        }
+
+        // 채팅방 목록 렌더링 함수
+        function renderChatRooms(rooms) {
+          const $roomList = $("#roomList");
+          $roomList.empty();
+
+          if (!rooms || rooms.length === 0) {
+            $roomList.html('<div class="no-rooms">채팅방이 없습니다.</div>');
+            return;
+          }
+
+          rooms.forEach(function (room) {
+            // 상대방 정보 추출 (현재 로그인한 사용자가 아닌 상대방)
+            const otherUser =
+              room.sender.userId == userId ? room.receiver : room.sender;
+            const otherUserNickname = otherUser.nickname;
+
+            // 최근 메시지 추출
+            const lastMessage =
+              room.recentMessages && room.recentMessages.length > 0
+                ? room.recentMessages[0].content
+                : "메시지가 없습니다.";
+
+            // 읽지 않은 메시지 수
+            const unreadBadge =
+              room.unreadCount > 0
+                ? `<span class="badge">${room.unreadCount}</span>`
+                : "";
+
+            const $roomItem = $(`
+              <div class="room-item" data-id="${
+                room.chatRoomId
+              }" data-session="${room.sessionId}">
+                <div class="room-title">
+                  ${otherUserNickname} ${unreadBadge}
+                </div>
+                <div class="room-info">
+                  <div>피드: ${room.feedTitle}</div>
+                  <div>최근 메시지: ${lastMessage}</div>
+                  <div>생성일: ${formatDate(room.createdAt)}</div>
+                </div>
+              </div>
+            `);
+
+            $roomItem.click(function () {
+              goToChatRoom(room.chatRoomId, room.sessionId);
+            });
+
+            $roomList.append($roomItem);
+          });
+        }
+
+        // 날짜 포맷팅 함수
+        function formatDate(dateString) {
+          if (!dateString) return "";
+
+          const date = new Date(dateString);
+          return date.toLocaleDateString() + " " + date.toLocaleTimeString();
+        }
+
+        // 채팅방으로 이동 함수
+        function goToChatRoom(chatRoomId, sessionId) {
+          // 채팅방 정보를 로컬 스토리지에 저장
+          localStorage.setItem("currentChatRoomId", chatRoomId);
+          localStorage.setItem("currentSessionId", sessionId);
+          window.location.href = "/chat-test/room";
+        }
+
+        // 에러 메시지 표시 함수
+        function showError(message) {
+          $("#errorMessage").text(message);
+          $("#errorMessage").show();
+          setTimeout(function () {
+            $("#errorMessage").hide();
+          }, 5000);
+        }
+      });
+    </script>
+  </body>
+</html>
