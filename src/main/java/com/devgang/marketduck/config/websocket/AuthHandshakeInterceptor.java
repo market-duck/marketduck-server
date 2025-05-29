@@ -69,6 +69,9 @@ public class AuthHandshakeInterceptor extends HttpSessionHandshakeInterceptor {
                 if (query != null) {
                     Map<String, String> params = parseQueryString(query);
                     token = params.get("token");
+                    if (token.contains("Bearer")) {
+                        token = token.substring(7);
+                    }
                     log.debug("WebSocket 연결 시도: URL 파라미터에서 토큰 추출 - {}", token);
                 }
             } else {
