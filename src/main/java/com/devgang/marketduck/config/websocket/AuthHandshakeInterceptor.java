@@ -1,5 +1,6 @@
 package com.devgang.marketduck.config.websocket;
 
+import com.devgang.marketduck.auth.filter.CorsFilter;
 import com.devgang.marketduck.auth.jwt.JwtTokenizer;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -27,6 +28,7 @@ import java.util.Map;
 public class AuthHandshakeInterceptor extends HttpSessionHandshakeInterceptor {
 
     private final JwtTokenizer jwtTokenizer;
+    private final CorsFilter corsFilter;
 
     /**
      * 핸드셰이크 전처리
@@ -39,22 +41,8 @@ public class AuthHandshakeInterceptor extends HttpSessionHandshakeInterceptor {
             Map<String, Object> attributes) throws Exception {
         log.debug("WebSocket 연결 시도: {}", request.getRemoteAddress());
 
-        // CORS 헤더 추가
-        HttpHeaders headers = response.getHeaders();
-
-        // 클라이언트의 Origin 헤더 가져오기
-        String origin = request.getHeaders().getOrigin();
-        if (origin != null) {
-            headers.add("Access-Control-Allow-Origin", origin);
-        } else {
-            headers.add("Access-Control-Allow-Origin", "*");
-        }
-
-        headers.add("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS, PATCH");
-        headers.add("Access-Control-Allow-Headers",
-                "Origin, X-Requested-With, Content-Type, Accept, Authorization");
-        headers.add("Access-Control-Allow-Credentials", "true");
-        headers.add("Access-Control-Max-Age", "3600");
+        // WebSocket 연결 시 토큰 인증에만 집중하고 CORS 설정은 CorsFilter에 위임
+        // CorsFilter에서 모든 CORS 관련 설정을 통합 관리
 
         // 인증 토큰 처리
         if (request instanceof ServletServerHttpRequest) {
@@ -69,7 +57,7 @@ public class AuthHandshakeInterceptor extends HttpSessionHandshakeInterceptor {
                 if (query != null) {
                     Map<String, String> params = parseQueryString(query);
                     token = params.get("token");
-                    if (token.contains("Bearer")) {
+                    if (token != null && token.contains("Bearer")) {
                         token = token.substring(7);
                     }
                     log.debug("WebSocket 연결 시도: URL 파라미터에서 토큰 추출 - {}", token);
