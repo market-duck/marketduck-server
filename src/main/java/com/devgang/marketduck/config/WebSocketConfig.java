@@ -1,5 +1,6 @@
 package com.devgang.marketduck.config;
 
+import com.devgang.marketduck.auth.filter.CorsFilter;
 import com.devgang.marketduck.config.websocket.AuthHandshakeInterceptor;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Configuration;
@@ -28,7 +29,8 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     public void registerStompEndpoints(StompEndpointRegistry registry) {
         // 웹소켓 연결 엔드포인트 설정
         registry.addEndpoint("/ws-chat")
-                .setAllowedOriginPatterns("*")
+                // CORS 필터와 충돌하지 않도록 setAllowedOriginPatterns를 사용하지 않음
+                // CorsFilter에서 Origin 처리를 통합 관리함
                 .addInterceptors(authHandshakeInterceptor)
                 .withSockJS()
                 .setHeartbeatTime(15000) // 15초 간격으로 SockJS 하트비트

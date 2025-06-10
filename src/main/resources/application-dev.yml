@@ -1,10 +1,22 @@
 server:
   port: 8987
-spring:
   servlet:
+    context-path: /
     multipart:
       max-file-size: 10MB
       max-request-size: 10MB
+  tomcat:
+    max-threads: 200
+    max-connections: 10000
+    connection-timeout: 5000
+    max-http-form-post-size: 52428800 # 50MB in bytes
+  error:
+    include-message: always
+    include-binding-errors: always
+    include-stacktrace: on-param
+    include-exception: false
+
+spring:
   datasource:
     url: ${MAIN_DEV_DB_URL}
     username: ${MAIN_DEV_DB_ID}
@@ -20,7 +32,7 @@ spring:
     open-in-view: false
     defer-datasource-initialization: true
     hibernate:
-      ddl-auto: create
+      ddl-auto: update
     #    show-sql: true
     properties:
       hibernate:
@@ -28,23 +40,33 @@ spring:
         default_batch_fetch_size: 1000
   sql:
     init:
-      mode: always
+      mode: never
   cache:
     type: redis
   data:
     redis:
       host: ${REDIS_DEV_HOST}
       port: ${REDIS_DEV_PORT}
-logging.level:
-  org.hibernate.SQL: trace
-  org:
-    hibernate:
-      type:
-        descriptor:
-          sql:
-            org.hibernate.type.descriptor.sql.BasicBinder : trace
-    springframework:
-      web.servlet : trace
+
+logging:
+  level:
+    root: INFO
+    com.devgang.marketduck: DEBUG
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
+    org.springframework.web.servlet: DEBUG
+    org.springframework.security: DEBUG
+  file:
+    name: logs/marketduck-dev.log
+  logback:
+    rollingpolicy:
+      max-file-size: 10MB
+      max-history: 30
+      total-size-cap: 1GB
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %X{requestId} %X{clientIp} %X{username} %-5level %logger{36} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %X{requestId} %X{clientIp} %X{username} %-5level %logger{36} - %msg%n"
+
 mail:
   smtp:
     host: smtp.gmail.com
@@ -62,6 +84,7 @@ mail:
     name:
       user:
         join: email-registration-member
+
 cloud:
   aws:
     s3:
@@ -71,16 +94,20 @@ cloud:
       static: ap-northeast-2
     stack:
       auto: false
+
 springdoc:
   swagger-ui:
     path: /docs
     groups-order: DESC
-    operationsSorter: method
+    operations-sorter: method
+    tags-sorter: alpha
     disable-swagger-default-url: true
     display-request-duration: true
-    tags-sorter: alpha
+    doc-expansion: none
+    enabled: ${SWAGGER_ENABLED:true}
   api-docs:
     path: /api-docs
+    enabled: ${SWAGGER_ENABLED:true}
   show-actuator: true
   default-consumes-media-type: application/json
   default-produces-media-type: application/json

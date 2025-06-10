@@ -1,0 +1,68 @@
+services:
+  # MarketDuck 애플리케이션
+  marketduck:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: marketduck:dev
+    container_name: marketduck-dev
+    restart: unless-stopped
+    ports:
+      - "8987:8987"
+    environment:
+      - SPRING_PROFILES_ACTIVE=dev
+      - MAIN_DEV_DB_URL=jdbc:mysql://mysql:3306/marketduck?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Seoul&characterEncoding=UTF-8
+      - MAIN_DEV_DB_ID=marketduck
+      - MAIN_DEV_DB_PW=sussa1933!
+      - REDIS_DEV_HOST=redis
+      - REDIS_DEV_PORT=6379
+      - TZ=Asia/Seoul
+    volumes:
+      - ./logs:/app/logs
+    depends_on:
+      - mysql
+      - redis
+    networks:
+      - marketduck-network
+
+  # MySQL 데이터베이스
+  mysql:
+    image: mysql:8.0
+    container_name: marketduck-mysql
+    restart: unless-stopped
+    environment:
+      - MYSQL_DATABASE=marketduck
+      - MYSQL_USER=marketduck
+      - MYSQL_PASSWORD=sussa1933!
+      - MYSQL_ROOT_PASSWORD=sussa1933!
+      - TZ=Asia/Seoul
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./docker/mysql/init:/docker-entrypoint-initdb.d
+      - ./docker/mysql/conf:/etc/mysql/conf.d
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    networks:
+      - marketduck-network
+
+  # Redis 캐시
+  redis:
+    image: redis:7.0-alpine
+    container_name: marketduck-redis
+    restart: unless-stopped
+    ports:
+      - "6380:6379"
+    volumes:
+      - redis-data:/data
+    command: redis-server --appendonly yes
+    networks:
+      - marketduck-network
+
+volumes:
+  mysql-data:
+  redis-data:
+
+networks:
+  marketduck-network:
+    driver: bridge

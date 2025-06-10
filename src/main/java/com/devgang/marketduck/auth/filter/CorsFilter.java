@@ -15,7 +15,8 @@ import java.util.List;
 
 /**
  * 애플리케이션 전체의 CORS 정책을 관리하는 필터
- * HTTP 요청 및 WebSocket 연결 모두에 적용되는 CORS 설정을 중앙에서 관리합니다.
+ * HTTP 요청에 대한 CORS 설정을 중앙에서 관리합니다.
+ * WebSocket 핸드셰이크는 AuthHandshakeInterceptor에서 처리합니다.
  */
 @Component
 @Order(Ordered.HIGHEST_PRECEDENCE)
@@ -23,8 +24,11 @@ import java.util.List;
 public class CorsFilter extends OncePerRequestFilter {
 
     // 허용된 Origin 목록 - 외부 설정으로 분리할 수도 있음
-    private static final List<String> ALLOWED_ORIGINS = List.of(
-            "http://localhost:3000"
+    public static final List<String> ALLOWED_ORIGINS = List.of(
+            "http://localhost:3000",
+            "http://localhost:5173",
+            "http://marketduck.goghdev.xyz",
+            "https://marketduck.goghdev.xyz"
     // 추가 Origin은 여기에 추가
     );
 
@@ -33,16 +37,53 @@ public class CorsFilter extends OncePerRequestFilter {
             HttpServletRequest request,
             HttpServletResponse response,
             FilterChain filterChain) throws ServletException, IOException {
-        String originUrl = request.getHeader("Origin");
 
-        // Origin 검증 및 설정
-        String origin = validateOrigin(originUrl);
+        String requestURI = request.getRequestURI();
+
+        // 실제 WebSocket 핸드셰이크 요청만 건너뜀
+        // SockJS의 일반 HTTP 요청(/info, /iframe 등)은 여기서 CORS 처리
+        boolean isWebSocketHandshake = requestURI != null &&
+                (requestURI.matches("/ws-chat/\\d+/[^/]+/websocket") ||
+                        requestURI.matches("/ws-chat/websocket"));
+
+        if (isWebSocketHandshake) {
+            log.debug("WebSocket 핸드셰이크 요청 감지, CORS 필터 처리 건너뜀: {}", requestURI);
+            filterChain.doFilter(request, response);
+            return;
+        }
+
+        String originUrl = request.getHeader("Origin");
+        log.info("요청된 Origin: {}, URI: {}", originUrl, requestURI);
+        log.info("허용된 Origin 목록: {}", ALLOWED_ORIGINS);
+
+        String allowedOrigin = null;
+        if (originUrl != null) {
+            allowedOrigin = ALLOWED_ORIGINS.stream()
+                    .filter(o -> o.equals(originUrl))
+                    .findFirst()
+                    .orElse(null);
+        }
+
+        // Origin이 허용 목록에 있거나 null인 경우 처리
+        if (allowedOrigin != null) {
+            response.setHeader("Access-Control-Allow-Origin", allowedOrigin);
+            log.info("CORS 허용된 Origin 설정: {}", allowedOrigin);
+        } else if (originUrl == null) {
+            // Origin 헤더가 없는 경우 (직접 접근 등)
+            response.setHeader("Access-Control-Allow-Origin", "*");
+            log.info("Origin 헤더가 없음. 모든 Origin 허용");
+        } else {
+            // 허용되지 않은 Origin도 일시적으로 허용 (개발/테스트용)
+            log.warn("허용되지 않은 Origin 요청, 임시 허용: {}", originUrl);
+            response.setHeader("Access-Control-Allow-Origin", originUrl);
+        }
 
         // CORS 헤더 설정
-        setCorsHeaders(response, origin);
+        setCorsHeaders(response);
 
         // OPTIONS 요청(preflight) 처리
         if ("OPTIONS".equalsIgnoreCase(request.getMethod())) {
+            log.info("OPTIONS 요청 처리: {}", request.getRequestURI());
             response.setStatus(HttpServletResponse.SC_OK);
         } else {
             filterChain.doFilter(request, response);
@@ -50,30 +91,15 @@ public class CorsFilter extends OncePerRequestFilter {
     }
 
     /**
-     * Origin 검증 및 처리
-     * 
-     * @param originUrl 요청의 Origin 헤더 값
-     * @return 허용된 Origin 또는 요청의 Origin
-     */
-    public String validateOrigin(String originUrl) {
-        // 허용된 Origin 목록에서 확인
-        return ALLOWED_ORIGINS.stream()
-                .filter(o -> o.equals(originUrl))
-                .findFirst()
-                .orElse(originUrl);
-    }
-
-    /**
      * CORS 헤더 설정
      * 
      * @param response HTTP 응답
-     * @param origin   설정할 Origin 값
      */
-    public static void setCorsHeaders(HttpServletResponse response, String origin) {
-        response.setHeader("Access-Control-Allow-Origin", origin);
-        response.setHeader("Access-Control-Allow-Methods", "GET, POST, DELETE, PUT, PATCH, OPTIONS");
+    public static void setCorsHeaders(HttpServletResponse response) {
+        response.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, PATCH, OPTIONS");
         response.setHeader("Access-Control-Max-Age", "3600");
-        response.setHeader("Access-Control-Expose-Headers", "Authorization, userId, userStatus, Content-Disposition");
+        response.setHeader("Access-Control-Expose-Headers",
+                "Authorization, userId, userStatus, Content-Disposition");
         response.setHeader("Access-Control-Allow-Credentials", "true");
         response.setHeader("Access-Control-Allow-Headers",
                 "Origin, X-Requested-With, Content-Type, Accept, Key, Authorization, userId, userStatus, Content-Disposition, Timeout");

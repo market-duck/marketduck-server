@@ -1,0 +1,152 @@
+version: "3.8"
+
+services:
+  # MarketDuck 애플리케이션 (프로덕션 환경)
+  marketduck:
+    image: sussa1933/marketduck:latest
+    container_name: marketduck-prod
+    restart: always
+    ports:
+      - "8987:8987"
+    environment:
+      - SPRING_PROFILES_ACTIVE=prod
+      - MAIN_DEV_DB_URL=jdbc:mysql://mysql:3306/marketduck?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Seoul&characterEncoding=UTF-8
+      - MAIN_DEV_DB_ID=${DB_USER:-marketduck}
+      - MAIN_DEV_DB_PW=${DB_PASSWORD:-sussa1933!}
+      - REDIS_DEV_HOST=redis
+      - REDIS_DEV_PORT=6379
+      - TZ=Asia/Seoul
+      # 추가 프로덕션 환경 변수들을 여기에 설정
+    volumes:
+      - ./logs:/app/logs
+      - ./config:/app/config
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8987/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 2G
+        reservations:
+          memory: 1G
+    depends_on:
+      - mysql
+      - redis
+    networks:
+      - marketduck-network
+
+  # MySQL 데이터베이스 (프로덕션 환경)
+  mysql:
+    image: mysql:8.0
+    container_name: marketduck-mysql-prod
+    restart: always
+    environment:
+      - MYSQL_DATABASE=marketduck
+      - MYSQL_USER=${DB_USER:-marketduck}
+      - MYSQL_PASSWORD=${DB_PASSWORD:-sussa1933!}
+      - MYSQL_ROOT_PASSWORD=${DB_ROOT_PASSWORD:-sussa1933!}
+      - TZ=Asia/Seoul
+    ports:
+      - "127.0.0.1:3306:3306" # 로컬 접근만 허용
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./docker/mysql/init:/docker-entrypoint-initdb.d:ro
+      - ./docker/mysql/conf:/etc/mysql/conf.d:ro
+      - ./backup:/backup
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci --default-authentication-plugin=mysql_native_password
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "mysqladmin",
+          "ping",
+          "-h",
+          "localhost",
+          "-u",
+          "root",
+          "-p${DB_ROOT_PASSWORD:-sussa1933!}"
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 1G
+    networks:
+      - marketduck-network
+
+  # Redis 캐시 (프로덕션 환경)
+  redis:
+    image: redis:7.0-alpine
+    container_name: marketduck-redis-prod
+    restart: always
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-sussa1933!}
+    ports:
+      - "127.0.0.1:6379:6379" # 로컬 접근만 허용
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 500M
+    networks:
+      - marketduck-network
+
+  # 백업 서비스 (선택사항)
+  backup:
+    image: alpine:latest
+    container_name: marketduck-backup
+    restart: always
+    volumes:
+      - ./backup:/backup
+      - mysql-data:/data/mysql:ro
+      - redis-data:/data/redis:ro
+      - ./logs:/data/logs:ro
+    command: >
+      sh -c "apk add --no-cache mysql-client && 
+             mkdir -p /backup && 
+             while true; do 
+               DATE=$$(date +%Y%m%d-%H%M%S); 
+               mysqldump -h mysql -u root -p$${DB_ROOT_PASSWORD:-sussa1933!} --all-databases > /backup/mysql-$${DATE}.sql; 
+               tar -czf /backup/logs-$${DATE}.tar.gz /data/logs; 
+               find /backup -name 'mysql-*.sql' -mtime +7 -delete; 
+               find /backup -name 'logs-*.tar.gz' -mtime +7 -delete; 
+               sleep 86400; 
+             done"
+    environment:
+      - DB_ROOT_PASSWORD=${DB_ROOT_PASSWORD:-sussa1933!}
+    depends_on:
+      - mysql
+    networks:
+      - marketduck-network
+
+volumes:
+  mysql-data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${DATA_PATH:-/var/marketduck}/mysql
+  redis-data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${DATA_PATH:-/var/marketduck}/redis
+
+networks:
+  marketduck-network:
+    driver: bridge

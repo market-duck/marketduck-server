@@ -1,0 +1,124 @@
+version: "3.8"
+
+services:
+  # MarketDuck 개발 버전 애플리케이션 (배포 서버 환경)
+  marketduck:
+    image: sussa1933/marketduck:dev
+    container_name: marketduck-dev-prod
+    restart: always
+    ports:
+      - "8988:8987" # 포트를 8988로 변경하여 프로덕션 버전과 공존 가능
+    environment:
+      - SPRING_PROFILES_ACTIVE=dev
+      - MAIN_DEV_DB_URL=jdbc:mysql://mysql:3306/marketduck_dev?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Seoul&characterEncoding=UTF-8
+      - MAIN_DEV_DB_ID=${DB_USER:-marketduck}
+      - MAIN_DEV_DB_PW=${DB_PASSWORD:-sussa1933!}
+      - REDIS_DEV_HOST=redis
+      - REDIS_DEV_PORT=6380
+      - TZ=Asia/Seoul
+      # 추가 개발 환경 변수들을 여기에 설정
+    volumes:
+      - ./logs-dev:/app/logs
+      - ./config-dev:/app/config
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8987/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 1G
+        reservations:
+          memory: 512M
+    depends_on:
+      - mysql
+      - redis
+    networks:
+      - marketduck-dev-network
+
+  # MySQL 데이터베이스 (개발 버전용)
+  mysql:
+    image: mysql:8.0
+    container_name: marketduck-mysql-dev-prod
+    restart: always
+    environment:
+      - MYSQL_DATABASE=marketduck_dev
+      - MYSQL_USER=${DB_USER:-marketduck}
+      - MYSQL_PASSWORD=${DB_PASSWORD:-sussa1933!}
+      - MYSQL_ROOT_PASSWORD=${DB_ROOT_PASSWORD:-sussa1933!}
+      - TZ=Asia/Seoul
+    ports:
+      - "127.0.0.1:3307:3306" # 포트를 3307로 변경하여 프로덕션 DB와 공존 가능
+    volumes:
+      - mysql-dev-data:/var/lib/mysql
+      - ./docker/mysql/init:/docker-entrypoint-initdb.d:ro
+      - ./docker/mysql/conf:/etc/mysql/conf.d:ro
+      - ./backup-dev:/backup
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci --default-authentication-plugin=mysql_native_password
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "mysqladmin",
+          "ping",
+          "-h",
+          "localhost",
+          "-u",
+          "root",
+          "-p${DB_ROOT_PASSWORD:-sussa1933!}"
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 512M
+    networks:
+      - marketduck-dev-network
+
+  # Redis 캐시 (개발 버전용)
+  redis:
+    image: redis:7.0-alpine
+    container_name: marketduck-redis-dev-prod
+    restart: always
+    command: redis-server --appendonly yes --port 6380
+    ports:
+      - "127.0.0.1:6380:6380" # Redis 기본 포트 사용
+    volumes:
+      - redis-dev-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          cpus: "0.3"
+          memory: 256M
+    networks:
+      - marketduck-dev-network
+
+volumes:
+  mysql-dev-data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${DATA_PATH:-/var/marketduck}/dev/mysql
+  redis-dev-data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${DATA_PATH:-/var/marketduck}/dev/redis
+
+networks:
+  marketduck-dev-network:
+    driver: bridge

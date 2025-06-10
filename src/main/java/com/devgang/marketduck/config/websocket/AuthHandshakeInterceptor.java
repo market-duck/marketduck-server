@@ -41,8 +41,33 @@ public class AuthHandshakeInterceptor extends HttpSessionHandshakeInterceptor {
             Map<String, Object> attributes) throws Exception {
         log.debug("WebSocket 연결 시도: {}", request.getRemoteAddress());
 
-        // WebSocket 연결 시 토큰 인증에만 집중하고 CORS 설정은 CorsFilter에 위임
-        // CorsFilter에서 모든 CORS 관련 설정을 통합 관리
+        // Origin 처리
+        String originUrl = request.getHeaders().getOrigin();
+        log.info("WebSocket 연결 요청 Origin: {}", originUrl);
+
+        // WebSocket 핸드셰이크 시 Origin 검증 및 CORS 헤더 적용
+        if (originUrl != null) {
+            // CORS 필터의 허용된 Origin 목록과 동일한 검증 로직 적용
+            boolean isAllowedOrigin = CorsFilter.ALLOWED_ORIGINS.contains(originUrl);
+
+            if (isAllowedOrigin) {
+                // 허용된 Origin인 경우
+                response.getHeaders().add("Access-Control-Allow-Origin", originUrl);
+                log.info("WebSocket 핸드셰이크: 허용된 Origin - {}", originUrl);
+
+                // 필요한 CORS 헤더만 설정 (중복 방지)
+                response.getHeaders().add("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, PATCH, OPTIONS");
+                response.getHeaders().add("Access-Control-Allow-Credentials", "true");
+            } else {
+                // 허용되지 않은 Origin도 모두 허용
+                response.getHeaders().add("Access-Control-Allow-Origin", originUrl);
+                log.info("WebSocket 핸드셰이크: 허용되지않은 Origin - {}", originUrl);
+
+                // 필요한 CORS 헤더만 설정 (중복 방지)
+                response.getHeaders().add("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, PATCH, OPTIONS");
+                response.getHeaders().add("Access-Control-Allow-Credentials", "true");
+            }
+        }
 
         // 인증 토큰 처리
         if (request instanceof ServletServerHttpRequest) {

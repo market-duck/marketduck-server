@@ -51,6 +51,7 @@ public class SecConfig {
                                 .authorizeHttpRequests((authorizeHttpRequests) -> authorizeHttpRequests
                                                 .requestMatchers(new AntPathRequestMatcher("/open-api/**")).permitAll()
                                                 .requestMatchers(new AntPathRequestMatcher("/chat-test/**")).permitAll()
+                                                .requestMatchers(new AntPathRequestMatcher("/ws-chat/**")).permitAll()
                                                 .requestMatchers(new AntPathRequestMatcher("/api/**"))
                                                 .hasAnyRole("USER")
                                                 .requestMatchers(new AntPathRequestMatcher("/**")).permitAll())
